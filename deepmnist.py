@@ -20,16 +20,27 @@ def conv2d(x, W):
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
+
+#mnist 是一个轻量级 以numpy数组的形式存储着训练，校验和测试数集
 mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+
+
+
 sess = tf.InteractiveSession()
 
+#输入和 目标输出
 x = tf.placeholder("float", shape=[None, 784])
 y_ = tf.placeholder("float", shape=[None, 10])
 
+
+# 用变量存储权重和偏置
 W = tf.Variable(tf.zeros([784,10]))
 b = tf.Variable(tf.zeros([10]))
 
+# 这个初始化是全部置零
 sess.run(tf.initialize_all_variables())
+
+# 网络输出
 y = tf.nn.softmax(tf.matmul(x,W) + b)
 cross_entropy = -tf.reduce_sum(y_*tf.log(y))
 
