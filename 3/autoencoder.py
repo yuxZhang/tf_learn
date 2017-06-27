@@ -79,6 +79,8 @@ init = tf.global_variables_initializer()
 sess = tf.InteractiveSession()
 sess.run(init)
 
+
+# 先decoder(也就是pred) 再算cost
 total_batch = int(mnist.train.num_examples/batch_size)
 # Training cycle
 for epoch in range(training_epochs):

@@ -1,20 +1,13 @@
-class test_smp(object):
-    def  __init__(self, val):
-        self.val = val
+import tensorflow as tf
 
-    def __enter__(self):
-        print "In __enter__()"
-        # return 1
-
-
-    def __exit__(self, type, value, trace):
-        print "In __exit__()"
-        # return 1
-
-
-
-def test_fun(val):
-    return test_smp(val)
-
-with test_fun(23) as a:
-    pass
+with tf.variable_scope("foo", initializer=tf.constant_initializer(0.4)):
+    v = tf.get_variable("v", [1])
+    assert v.eval() == 0.4  # Default initializer as set above.
+    w = tf.get_variable("w", [1], initializer=tf.constant_initializer(0.3))
+    assert w.eval() == 0.3  # Specific initializer overrides the default.
+    with tf.variable_scope("bar"):
+        v = tf.get_variable("v", [1])
+        assert v.eval() == 0.4  # Inherited default initializer.
+    with tf.variable_scope("baz", initializer=tf.constant_initializer(0.2)):
+        v = tf.get_variable("v", [1])
+        assert v.eval() == 0.2  # Changed default initializer.
