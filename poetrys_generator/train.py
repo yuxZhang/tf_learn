@@ -1,6 +1,8 @@
+#coding: utf-8
 import collections
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib import rnn
 
 input_file = 'poetry.txt'
 poetrys = []
@@ -13,6 +15,7 @@ with open(input_file) as f:
                 continue
             if len(content) < 5 or len(content) > 79:
                 continue
+            content = '[' + content + ']'
             poetrys.append(content)
         except Exception as e:
             pass
@@ -53,20 +56,22 @@ for i in range(n_chunk):
     ydata = np.copy(xdata)
     ydata[:, :-1] = xdata[:, 1:]
 
+    x_batches.append(xdata)
+    y_batches.append(ydata)
+
 
 input_data = tf.placeholder(tf.int32, [batch_size, None])
 output_targets = tf.placeholder(tf.int32, [batch_size, None])
 
 def neural_network(model='lstm', rnn_size=128, num_layers=2):
     if model == 'rnn':
-        cell_fun = tf.nn.rnn_cell.BasicRNNCell
+        cell_fun = rnn.BasicRNNCell
     elif model == 'gru':
-        cell_fun = tf.nn.rnn_cell.GRUCell
+        cell_fun = rnn.GRUCell
     elif model == 'lstm':
-        cell_fun = tf.nn.rnn_cell.BasicLSTMCell
+        cell_fun = rnn.BasicLSTMCell
 
-    cell = cell_fun(rnn_size, state_is_tuple=True)
-    cell = tf.nn.rnn_cell.MultiRNN([cell] * num_layers, state_is_tuple=True)
+    cell = rnn.MultiRNNCell([cell_fun(rnn_size, state_is_tuple=True) for _ in range(num_layers)], state_is_tuple=True)
 
     initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -88,8 +93,8 @@ def neural_network(model='lstm', rnn_size=128, num_layers=2):
 def train_neural_network():
     logits, last_state, _, _, _ = neural_network()
     targets = tf.reshape(output_targets, [-1])
-    loss = tf.nn.seq2seq.sequence_loss_by_example([logits], [targets], [tf.one_like(targets, dtype=tf.float32)], len(words))
-    cost = tf.reduece_mean(loss)
+    loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example([logits], [targets], [tf.ones_like(targets, dtype=tf.float32)], len(words))
+    cost = tf.reduce_mean(loss)
     learning_rate = tf.Variable(0.0, trainable=False)
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars), 5)
@@ -101,7 +106,7 @@ def train_neural_network():
 
         saver = tf.train.Saver(tf.all_variables())
 
-        for epoch in range(50):
+        for epoch in range(100):
             sess.run(tf.assign(learning_rate, 0.002 * (0.97 ** epoch)))
             n = 0
             for batche in range(n_chunk):
@@ -109,7 +114,7 @@ def train_neural_network():
                 n = n + 1
                 print(epoch, batche, train_loss)
             if epoch % 7 == 0:
-                saver.save(sess, 'poetry.module', global_step=epoch)
+                saver.save(sess, 'tmp/poetry.module', global_step=epoch)
 train_neural_network()
 
 

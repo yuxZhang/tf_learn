@@ -1,3 +1,4 @@
+#coding: utf-8
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -8,47 +9,16 @@ import urllib
 import numpy as np
 import tensorflow as tf
 
-IRIS_TRAINING = "iris_training.csv"
+IRIS_TRAINING = os.path.join(os.path.dirname(__file__), "iris_training.csv")
 IRIS_TRAINING_URL = "http://download.tensorflow.org/data/iris_training.csv"
 
-IRIS_TEST = "iris_test.csv"
+IRIS_TEST = os.path.join(os.path.dirname(__file__), "iris_test.csv")
 IRIS_TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
 
 
-def main():
-    def my_input_fn(filename):
-        labels = []
-        feature_cols = dict()
-        with open(filename) as fi:
-            line = fi.readline().strip()
-            arr = line.split(',')
-            row, col = int(arr[0]), int(arr[1])
-            print("col=%d"%col)
-            feature_names = [_ for _ in arr[2:]]
-            for name in feature_names:
-                feature_cols[name] = []
-            line = fi.readline().strip()
-            while line:
-                arr = line.split(',')
-                print("len(arr)=%d"%len(arr))
-                labels.append(int(arr[-1]))
-                for i in range(col):
-                    feature_cols[feature_names[i]].append(float(arr[i]))
-        for name in feature_names:
-            feature_cols[name] = tf.constant(feature_cols[name], dtype=tf.float32)
-        labels = tf.constant(labels, dtype=tf.int32)
-        return feature_cols, labels
+def main(unused_argv):
 
-    if not os.path.exists(IRIS_TRAINING):
-        raw = urllib.urlopen(IRIS_TRAINING_URL).read()
-        with open(IRIS_TRAINING, "w") as f:
-            f.write(raw)
-
-    if not os.path.exists(IRIS_TEST):
-        raw = urllib.urlopen(IRIS_TEST_URL).read()
-        with open(IRIS_TEST, "w") as f:
-            f.write(raw)
-
+    tf.logging.set_verbosity(tf.logging.INFO)
     #training_set = my_input_fn(IRIS_TRAINING)
     training_set = tf.contrib.learn.datasets.base.load_csv_with_header(
         filename=IRIS_TRAINING,
@@ -62,32 +32,40 @@ def main():
     # Specify that all features have real-value data
     feature_columns = [tf.contrib.layers.real_valued_column("", dimension=4)]
 
+    validation_monitor = tf.contrib.learn.monitors.ValidationMonitor(test_set.data,
+                                                                     test_set.target,
+                                                                     every_n_steps=50)
+
     classifier = tf.contrib.learn.DNNClassifier(feature_columns=feature_columns,
                                                 hidden_units=[10, 20, 10],
                                                 n_classes=3,
-                                                model_dir="/tmp/iris_model")
+                                                model_dir="/home/zhangyuxiang/dl_learn/tf_learn/contrib_learn/tmp/iris_model",
+                                                config=tf.contrib.learn.RunConfig(save_checkpoints_secs=1))
 
     # Define the training inputs
-    def get_train_inputs():
-        x = tf.constant(training_set.data)
-        y = tf.constant(training_set.target)
-
-        return x, y
-    print(training_set.data)
-    return
+    # def get_train_inputs():
+    #     x = tf.constant(training_set.data)
+    #     y = tf.constant(training_set.target)
+    #
+    #     return x, y
+    # print(training_set.data)
+    # return
     # Fit model.
-    classifier.fit(input_fn=get_train_inputs, steps=2000)
+    classifier.fit( x=training_set.data,
+                    y=training_set.target,
+                    steps=2000,
+                    monitors=[validation_monitor])
 
     # Define the test inputs
-    def get_test_inputs():
-        x = tf.constant(test_set.data)
-        y = tf.constant(test_set.target)
-
-        return x, y
+    # def get_test_inputs():
+    #     x = tf.constant(test_set.data)
+    #     y = tf.constant(test_set.target)
+    #
+    #     return x, y
 
     # Evaluate accuracy.
-    accuracy_score = classifier.evaluate(input_fn=get_test_inputs,
-                                         steps=1)["accuracy"]
+    accuracy_score = classifier.evaluate(x=test_set.data,
+                                         y=test_set.target)["accuracy"]
 
     print("\nTest Accuracy: {0:f}\n".format(accuracy_score))
 
@@ -105,4 +83,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    tf.app.run()
